@@ -188,3 +188,8 @@ public:
         collector.setLetterFrequency(freq);
     }
 };
+
+int testConflict()
+{
+    return 1;
+}

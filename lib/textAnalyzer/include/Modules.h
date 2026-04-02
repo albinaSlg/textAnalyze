@@ -102,3 +102,89 @@ public:
     }
 };
 
+class SentenceCountModule : public IStatisticModule {
+public:
+    void analyze(const std::string& text, MetricCollector& collector) override {
+        std::vector<int> lengths;
+        std::regex splitter(R"([^.!?…]+)");
+        auto begin = std::sregex_iterator(text.begin(), text.end(), splitter);
+        auto end = std::sregex_iterator();
+
+        for (auto it = begin; it != end; ++it) {
+            std::string sentence = std::regex_replace(it->str(), std::regex("^\\s+|\\s+$"), "");
+            if (sentence.empty()) continue;
+
+            std::istringstream stream(sentence);
+            std::string word;
+            int count = 0;
+            while (stream >> word) {
+                word = cleanWord(word);
+                if (!word.empty()) count++;
+            }
+            if (count > 0) lengths.push_back(count);
+        }
+
+        collector.setSentenceCount(static_cast<int>(lengths.size()));
+        collector.setSentenceLengths(lengths);
+    }
+};
+
+class SentenceLengthModule : public IStatisticModule {
+public:
+    void analyze(const std::string& text, MetricCollector& collector) override {
+        std::vector<int> lengths;
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+        std::wstring sentence;
+        int count = 0;
+
+        for (size_t i = 0; i < text.size();) {
+            unsigned char c = text[i];
+            int len = 1;
+            if ((c & 0xE0) == 0xC0) len = 2;
+            else if ((c & 0xF0) == 0xE0) len = 3;
+            else if ((c & 0xF8) == 0xF0) len = 4;
+
+            std::string utf8_char = text.substr(i, len);
+            std::wstring wch = conv.from_bytes(utf8_char);
+            wchar_t wc = wch[0];
+
+            if (iswalpha(wc)) {
+                count++;
+            }
+
+            if (utf8_char == "." || utf8_char == "!" || utf8_char == "?" || utf8_char == "…") {
+                lengths.push_back(count);
+                count = 0;
+            }
+
+            i += len;
+        }
+
+        if (count > 0) {
+            lengths.push_back(count);
+        }
+
+        collector.setSentenceLengths(lengths);
+    }
+};
+
+class LetterFrequencyModule : public IStatisticModule {
+public:
+    void analyze(const std::string& text, MetricCollector& collector) override {
+        std::map<std::string, int> freq;
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+
+        try {
+            std::wstring wtext = conv.from_bytes(text);
+            for (wchar_t c : wtext) {
+                if (iswalpha(c)) {
+                    std::string ch = conv.to_bytes(c);
+                    freq[ch]++;
+                }
+            }
+        }
+        catch (...) {}
+
+        collector.setLetterFrequency(freq);
+    }
+};

@@ -167,3 +167,24 @@ public:
         collector.setSentenceLengths(lengths);
     }
 };
+
+class LetterFrequencyModule : public IStatisticModule {
+public:
+    void analyze(const std::string& text, MetricCollector& collector) override {
+        std::map<std::string, int> freq;
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+
+        try {
+            std::wstring wtext = conv.from_bytes(text);
+            for (wchar_t c : wtext) {
+                if (iswalpha(c)) {
+                    std::string ch = conv.to_bytes(c);
+                    freq[ch]++;
+                }
+            }
+        }
+        catch (...) {}
+
+        collector.setLetterFrequency(freq);
+    }
+};

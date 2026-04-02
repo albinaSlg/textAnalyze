@@ -128,3 +128,42 @@ public:
         collector.setSentenceLengths(lengths);
     }
 };
+
+class SentenceLengthModule : public IStatisticModule {
+public:
+    void analyze(const std::string& text, MetricCollector& collector) override {
+        std::vector<int> lengths;
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+        std::wstring sentence;
+        int count = 0;
+
+        for (size_t i = 0; i < text.size();) {
+            unsigned char c = text[i];
+            int len = 1;
+            if ((c & 0xE0) == 0xC0) len = 2;
+            else if ((c & 0xF0) == 0xE0) len = 3;
+            else if ((c & 0xF8) == 0xF0) len = 4;
+
+            std::string utf8_char = text.substr(i, len);
+            std::wstring wch = conv.from_bytes(utf8_char);
+            wchar_t wc = wch[0];
+
+            if (iswalpha(wc)) {
+                count++;
+            }
+
+            if (utf8_char == "." || utf8_char == "!" || utf8_char == "?" || utf8_char == "…") {
+                lengths.push_back(count);
+                count = 0;
+            }
+
+            i += len;
+        }
+
+        if (count > 0) {
+            lengths.push_back(count);
+        }
+
+        collector.setSentenceLengths(lengths);
+    }
+};
